@@ -40,9 +40,12 @@ class BaseScheduler(object):
 
         return DiskUsage(size, available, used)
 
+    def get_job(self):
+        raise NotImplementedError
+
     def get_jobs(self):
         '''
-        Returns a JobQueue object representing the jobs currently queued or running on the cluster.
+        Returns a list of JobQueue object representing the jobs currently queued or running on the cluster.
         '''
         raise NotImplementedError
 
