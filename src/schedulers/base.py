@@ -51,41 +51,41 @@ class BaseScheduler(object):
 
     def get_server_config(self):
         '''
-        Returns a list of Data objects representing the server config.
+        Returns a Data object representing the server config.
         '''
         raise NotImplementedError
 
     def update_server_config(self, settings):
         '''
         Updates the scheduler configuration.
-        Returns a list of Data objects representing the server config.
+        Returns a Data object representing the server config.
         '''
         raise NotImplementedError
 
-    def get_queues(self, queue):
+    def get_queues(self):
         '''
-        Returns a list of Data objects representing the configuration of the scheduler queues.
+        Returns a Data object representing the configuration of the scheduler queues.
         '''
         raise NotImplementedError
 
-    def add_queue(self, queue):
+    def add_queue(self, queue_name):
         '''
         Adds a queue to the scheduler configuration.
-        Returns a list of Data objects representing the configuration of the scheduler queues.
+        Returns a Data object representing the configuration of the scheduler queues.
         '''
         raise NotImplementedError
 
     def update_queue(self, queue):
         '''
         Updates a queue's configuration.
-        Returns a list of Data objects representing the configuration of the scheduler queues.
+        Returns a Data object representing the configuration of the scheduler queues.
         '''
         raise NotImplementedError
 
     def delete_queue(self, queue):
         '''
         Removes a queue from the scheduler configuration.
-        Returns a list of Data objects representing the configuration of the scheduler queues.
+        Returns a Data object representing the configuration of the scheduler queues.
         '''
         raise NotImplementedError
 

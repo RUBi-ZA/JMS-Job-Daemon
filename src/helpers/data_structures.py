@@ -1,50 +1,50 @@
 class ValueType:  
-    Text = 1
-    Number = 2
-    Checkbox = 3
-    Label = 4
-    Options = 5
+    TEXT = 10
+    NUMBER = 20
+    CHECKBOX = 30
+    LABEL = 40
+    OPTIONS = 50
 
 
 class Status:   
-    Held = 1
-    Queued = 2
-    Running = 3
-    Complete = 4
+    HELD = 10
+    QUEUED = 20
+    RUNNING = 30
+    COMPLETE = 40
 
 
 class ClusterJob:  
-    def __init__(self, job_id, name, user, status, output, error, working, exit_code=None, data_sections=[]):        
-        self.JobID = job_id
-        self.JobName = name
-        self.User = user
-        self.Status = status
-        self.ExitCode = exit_code
-        self.OutputLog = output
-        self.ErrorLog = error
-        self.WorkingDir = working    
-        self.DataSections = data_sections
+    def __init__(self, job_id, name, user, status, output, error, working_directory, exit_code=None, data_sections=[]):        
+        self.job_id = job_id
+        self.job_name = name
+        self.user = user
+        self.status = status
+        self.output = output
+        self.error = error
+        self.working_directory = working_directory   
+        self.exit_code = exit_code 
+        self.data_sections = data_sections
 
 
 class Data:  
-    def __init__(self, DataSections, Data):
-        self.DataSections = DataSections
-        self.Data = Data
+    def __init__(self, data_sections, data):
+        self.data_sections = data_sections
+        self.data = data
 
 
 class DataSection:
-    def __init__(self, SectionHeader, DataFields):
-        self.SectionHeader = SectionHeader
-        self.DataFields = DataFields
+    def __init__(self, section_header, data_fields):
+        self.section_header = section_header
+        self.data_fields = data_fields
 
 
 class DataField: 
-    def __init__(self, Key, Label, ValueType, DefaultValue, Disabled=False):
-        self.Key = Key
-        self.Label = Label
-        self.ValueType = ValueType
-        self.DefaultValue = DefaultValue
-        self.Disabled = Disabled
+    def __init__(self, key, label, value_type, default_value, disabled=False):
+        self.key = key
+        self.label = label
+        self.value_type = value_type
+        self.default_value = default_value
+        self.disabled = disabled
 
 
 class SchedulerStatus:
@@ -72,7 +72,7 @@ class Job:
 
 class JobQueue:   
     def __init__(self, column_names, rows):
-        self.column_names = column_names # A list of column names
+        self.column_names = column_names # A list of column names (strings)
         self.rows = rows # a list of QueueRows
 
 class QueueRow:   
@@ -102,24 +102,24 @@ class DiskUsage:
 
 
 class SettingsSection: 
-    def __init__(self, SectionHeader, Settings):
-        self.SectionHeader = SectionHeader
-        self.Settings = Settings
+    def __init__(self, section_header, settings):
+        self.section_header = section_header
+        self.settings = settings
    
 
 class Setting: 
-    def __init__(self, Name, Value):
-        self.Name = Name
-        self.Value = Value
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 
 class Administrator:
-    def __init__(self, AdministratorName=None, SettingsSections=[]):
-        self.AdministratorName = AdministratorName
-        self.SettingsSections = SettingsSections
+    def __init__(self, administrator_name=None, settings_sections=[]):
+        self.administrator_name = administrator_name
+        self.settings_sections = settings_sections
 
     
 class Queue:
-    def __init__(self, QueueName=None, SettingsSections=[]):
-        self.QueueName = QueueName
-        self.SettingsSections = SettingsSections
+    def __init__(self, queue_name=None, settings_sections=[]):
+        self.queue_name = queue_name
+        self.settings_sections = settings_sections
