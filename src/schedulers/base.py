@@ -8,7 +8,7 @@ All unimplemented methods must be overridden in child classes. Comments
 within each method provide the required return values.
 '''
 
-from ..helpers.data_structures import SchedulerStatus, DiskUsage
+from src.helpers.data_structures import SchedulerStatus, DiskUsage
 
 from impersonator.client import Impersonator
 
@@ -26,10 +26,10 @@ class BaseScheduler(object):
         return self.impersonator.execute(cmd)
 
     def get_status(self):
-        return SchedulerStatus(self.get_nodes(), self.get_disk_usage(self.config["JMS_shared_directory"]))
+        return SchedulerStatus(self.get_nodes(), self.get_disk_usage(self.config["storage"]["shared_directory"]))
 
     def get_disk_usage(self, path):
-        output = self.run_process("df -h %s" % path)
+        output = self.run_process("df -h %s" % path)['out']
 
         lines = output.split('\n')
 
@@ -45,7 +45,7 @@ class BaseScheduler(object):
 
     def get_jobs(self):
         '''
-        Returns a list of JobQueue object representing the jobs currently queued or running on the cluster.
+        Returns a JobQueue object representing the jobs currently queued or running on the cluster.
         '''
         raise NotImplementedError
 
@@ -91,28 +91,28 @@ class BaseScheduler(object):
 
     def get_administrators(self):
         '''
-        Return list of Data objects representing the administrator users of the scheduler.
+        Return a Data object representing the administrator users of the scheduler.
         '''
         raise NotImplementedError
 
     def add_administrator(self, Administrators):
         '''
         Adds an administrator user to the scheduler configuration.
-        Return list of Data objects representing the administrator users of the scheduler.
+        Return a Data object representing the administrator users of the scheduler.
         '''
         raise NotImplementedError
 
     def update_administrator(self, Administrators):
         '''
         Update an administrator user.
-        Return list of Data objects representing the administrator users of the scheduler.
+        Return a Data object representing the administrator users of the scheduler.
         '''
         raise NotImplementedError
 
     def delete_administrator(self, Administrators):
         '''
         Delete an administrator from the scheduler configuration
-        Return list of Data objects representing the administrator users of the scheduler.
+        Return a Data object representing the administrator users of the scheduler.
         '''
         raise NotImplementedError
 

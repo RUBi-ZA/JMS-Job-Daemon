@@ -3,11 +3,11 @@ Scheduler plugin for version 2.4.x of Torque Resource Manager (http://www.adapti
 '''
 from __future__ import print_function
 
-from .base import BaseScheduler
+from src.schedulers.base import BaseScheduler
 
-from ..helpers.data_structures import *
-from ..helpers.utils import deepgetattr
-from ..helpers.filesystem import create_directory, copy_directory
+from src.helpers.data_structures import *
+from src.helpers.utils import deepgetattr
+from src.helpers.filesystem import create_directory, copy_directory
 
 from lxml import objectify
 
