@@ -4,6 +4,7 @@ from src.config.email import *
 from src.config.impersonator import *
 from src.config.scheduler import *
 from src.config.storage import *
+from src.config.cache import *
 
 SHARED_DIRECTORY = os.path.expanduser(SHARED_DIRECTORY)
 TEMP_DIRECTORY = os.path.expanduser(TEMP_DIRECTORY)
@@ -28,5 +29,6 @@ config = {
     "filemanager": {
         "root_url": os.path.join(SHARED_DIRECTORY, "users/"),
         "temp_dir": TEMP_DIRECTORY
-    }
+    },
+    "cache": CACHE
 }

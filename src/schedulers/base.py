@@ -9,26 +9,29 @@ within each method provide the required return values.
 '''
 
 from src.helpers.data_structures import SchedulerStatus, DiskUsage
+from src.helpers.decorators import clear_credentials, decorate_callables
 
 from impersonator.client import Impersonator
 
 
+@decorate_callables(clear_credentials)
 class BaseScheduler(object):
-    def __init__(self, config, token):
+    def __init__(self, config, impersonator):
         self.config = config
-        self.impersonator = Impersonator(
-            host=config["impersonator"]["host"], 
-            port=config["impersonator"]["port"], 
-            token=token
-        )
+        self.impersonator = impersonator
+        self._is_transaction = False
+    
+    def set_credentials(self, credentials):
+        self.impersonator.token = credentials
+    
+    def clear_credentials(self):
+        self.impersonator.token = None
 
     def run_process(self, cmd):
         return self.impersonator.execute(cmd)
 
-    def get_status(self):
-        return SchedulerStatus(self.get_nodes(), self.get_disk_usage(self.config["storage"]["shared_directory"]))
-
-    def get_disk_usage(self, path):
+    def get_disk_usage(self):
+        path = self.config["storage"]["shared_directory"]
         output = self.run_process("df -h %s" % path)['out']
 
         lines = output.split('\n')
