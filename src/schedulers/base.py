@@ -43,12 +43,15 @@ class BaseScheduler(object):
 
         return DiskUsage(size, available, used)
 
-    def get_job(self):
-        raise NotImplementedError
-
     def get_jobs(self):
         '''
-        Returns a JobQueue object representing the jobs currently queued or running on the cluster.
+        Returns a JobMap object representing the jobs currently queued or running on the cluster.
+        '''
+        raise NotImplementedError
+    
+    def transform_job_list_to_queue(self, jobs, page_num=1, page_size=50):
+        '''
+        Accepts a list of ClusterJob objects and transforms them into a paginated JobTable
         '''
         raise NotImplementedError
 

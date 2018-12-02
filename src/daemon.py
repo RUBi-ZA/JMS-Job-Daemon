@@ -9,7 +9,7 @@ from src.helpers.daemon import Daemon
 from src.helpers.data_structures import SchedulerStatus 
 from src.helpers.context_managers import SchedulerTransaction
 
-import time, json
+import time, json, pickle
 
 
 PID_FILE = "/tmp/scheduler_daemon.pid"
@@ -24,16 +24,14 @@ class SchedulerDaemon(Daemon):
         self.poll_interval = poll_interval
 
     def update_cache(self):
-        prev_jobs = self.cache.get("jobs")
-
         with SchedulerTransaction(self.scheduler, self.service_token):
             nodes = self.scheduler.get_nodes()
             disk_usage = self.scheduler.get_disk_usage()
-            status = SchedulerStatus(nodes, disk_usage).to_JSON()
-            jobs = self.scheduler.get_jobs().to_JSON()
+            status = SchedulerStatus(nodes, disk_usage)
+            jobs = self.scheduler.get_jobs()
 
-        self.cache.set("status", status)
-        self.cache.set("jobs", jobs)                
+        self.cache.set("status", status.to_JSON())
+        self.cache.set("jobs", jobs.pickle())                
 
     def run(self):
         while True:

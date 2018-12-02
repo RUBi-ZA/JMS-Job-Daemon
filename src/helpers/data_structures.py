@@ -1,7 +1,10 @@
-import json
+import json, pickle
 
 
-class SerializableObject(object):        
+class SerializableObject(object):  
+    def pickle(self):
+        return pickle.dumps(self)
+
     def to_JSON(self): 
         return json.dumps(self, default=lambda o: self._try(o), sort_keys=True, indent=4, separators=(',',':'))
 
@@ -12,24 +15,24 @@ class SerializableObject(object):
             return str(field)
 
 
-
 class ValueType(SerializableObject):  
-    TEXT = 10
-    NUMBER = 20
-    CHECKBOX = 30
-    LABEL = 40
-    OPTIONS = 50
+    TEXT = "TEXT"
+    NUMBER = "NUMBER"
+    CHECKBOX = "CHECKBOX"
+    LABEL = "LABEL"
+    OPTIONS = "OPTIONS"
 
 
 class Status(SerializableObject):   
-    HELD = 10
-    QUEUED = 20
-    RUNNING = 30
-    COMPLETE = 40
+    HELD = "HELD"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETE = "COMPLETE"
 
 
 class ClusterJob(SerializableObject):  
-    def __init__(self, job_id, name, user, status, output, error, working_directory, exit_code=None, data_sections=[]):        
+    def __init__(self, job_id=None, name=None, user=None, status=None, output=None, 
+            error=None, working_directory=None, exit_code=None, data_sections=[]):        
         self.job_id = job_id
         self.job_name = name
         self.user = user
@@ -80,33 +83,41 @@ class Node(SerializableObject):
 
 
 class Job(SerializableObject):   
-    def __init__(self, job_id, cores):
+    def __init__(self, job_id=None, cores=None):
         self.job_id = job_id
         self.cores = cores
 
 
-class JobQueue(SerializableObject):   
-    def __init__(self, column_names, rows):
-        self.column_names = column_names # A list of column names (strings)
-        self.rows = rows # a list of QueueRows
+class JobMap(SerializableObject):
+    def __init__(self, job_map=None):
+        self.job_map = job_map
+    
+    def __getitem__(self, job_id):
+        return self.job_map[job_id]
+    
+    def __iter__(self):
+        return iter(self.job_map)
+    
+    def job_ids(self):
+        return self.job_map.keys()
 
-class QueueRow(SerializableObject):   
+    def jobs(self):
+        return list(self.job_map.values())
+
+
+class JobTable(SerializableObject):   
+    def __init__(self, column_names, rows, page_num, page_size):
+        self.column_names = column_names # A list of column names (strings)
+        self.rows = rows # a list of JobRow
+        self.page_num = page_num
+        self.page_size = page_size
+
+
+class JobRow(SerializableObject):   
     def __init__(self, job_id, state, values):
         self.job_id = job_id
         self.state = state
         self.values = values
-
-
-class QueueItem(SerializableObject): 
-    def __init__(self, job_id, username, job_name, nodes, cores, state, time, queue):
-        self.job_id = job_id
-        self.username = username
-        self.job_name = job_name
-        self.nodes = nodes
-        self.cores = cores
-        self.state = state
-        self.time = time
-        self.queue = queue
 
 
 class DiskUsage(SerializableObject):

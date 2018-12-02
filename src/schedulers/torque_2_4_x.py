@@ -10,64 +10,72 @@ from src.helpers.utils import deepgetattr
 from src.helpers.filesystem import create_directory, copy_directory
 
 from lxml import objectify
+from lxml.etree import XMLSyntaxError
 
 import os, socket, sys
 
 
 class Torque(BaseScheduler):
-    def get_job(self, id):
-        out = self.run_process("qstat -x %s" % id)["out"]
-        data = objectify.fromstring(out)
-        return self._parse_job(data.Job)
-
     def get_jobs(self):
-        column_names = ["Job ID", "Username", "Queue", "Job Name", "State", "Nodes", "Cores", "Time Requested", "Time Used"]
+        out = self.run_process("qstat -x")['out']
+        
+        jobs = {}
+        try:
+            data = objectify.fromstring(out)
+            for job_xml in data.Job:
+                job = self._parse_job(job_xml)
+                jobs[job.job_id] = job
+        except XMLSyntaxError:
+            pass        
+        
+        return JobMap(jobs)
+
+    def transform_job_list_to_queue(self, jobs, page_num=1, page_size=50):
+        column_names = ["Job ID", "Username", "Queue", "Job Name", "State", "Nodes", "Processes/Node", "Time Requested", "Time Used"]
         rows = []
         
-        queue = JobQueue(column_names, rows)
-        
-        try:
-            out = self.run_process("qstat -x")['out']
-            data = objectify.fromstring(out)
-        except Exception as e:
-            return queue
+        table = JobTable(column_names, rows, page_num, page_size)
+
+        end_index = page_num * page_size
+        start_index = end_index - page_size
             
-        for job in data.Job:
+        for job in jobs[start_index:end_index]:
             cores = 1
-            nodes = str(job.Resource_List.nodes).split(":")
-            if len(nodes) > 1:
-                cores = int(nodes[1].split("=")[1])
-            nodes = nodes[0]
-            
-            try:
-                time_used = str(job.resources_used.walltime)
-            except:
-                time_used = "n/a"
-            
-            state = str(job.job_state)
-            if state == "H":
-                state = Status.HELD
-            elif state == "Q":
-                state = Status.QUEUED
-            elif state == "R" or state == "E":
-                state = Status.RUNNING
-            elif state == "C":
-                state = Status.COMPLETE
+            nodes = 1
+            queue = "n/a"
+            walltime = "n/a"
+            walltime_used = "n/a"
+
+            for data_section in job.data_sections:
+                if data_section.section_header == "Allocated Resources":
+                    for data_field in data_section.data_fields:
+                        if data_field.key == "nodes":
+                            arr = data_field.default_value.split(":")
+                            nodes = int(arr[0])
+                            cores = int(arr.split("=")[1]) if len(arr) > 1 else 1
+                        elif data_field.key == "walltime":
+                            walltime = data_field.default_value
+                        elif data_field.key == "queue":
+                            queue = data_field.default_value
+                if data_section.section_header == "Resources Used":
+                    for data_field in data_section.data_fields:
+                        if data_field.key == "walltime_used":
+                            walltime_used = data_field.default_value
             
             row = [
-                str(job.Job_Owner).split("@")[0],
-                str(job.queue),
-                str(job.Job_Name),
-                str(job.job_state),
+                job.user.split("@")[0],
+                queue,
+                job.job_name,
+                job.status,
                 nodes,
                 cores,
-                str(job.Resource_List.walltime),
-                time_used
+                walltime,
+                walltime_used
             ]
             
-            queue.rows.append(QueueRow(str(job.Job_Id), state, row))         
+            table.rows.append(JobRow(job.job_id, job.status, row))         
             
-        return queue
+        return table
 
     def get_server_config(self):
         output = self.run_process('qmgr -c "print server"')['out']
