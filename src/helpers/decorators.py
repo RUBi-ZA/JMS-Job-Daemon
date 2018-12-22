@@ -5,7 +5,7 @@ def decorate_callables(decorator):
     @functools.wraps(decorator)
     def decorate(cls):
         for method_name, method in inspect.getmembers(cls, inspect.isfunction):
-            if method_name != decorator.__name__:
+            if method_name not in [decorator.__name__, 'set_credentials']:
                 setattr(cls, method_name, decorator(method))
         return cls
     return decorate

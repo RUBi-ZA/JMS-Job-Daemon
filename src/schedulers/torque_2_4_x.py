@@ -6,6 +6,7 @@ from __future__ import print_function
 from src.schedulers.base import BaseScheduler
 
 from src.helpers.data_structures import *
+from src.helpers.context_managers import SchedulerTransaction
 from src.helpers.utils import deepgetattr
 from src.helpers.filesystem import create_directory, copy_directory
 
@@ -191,27 +192,27 @@ class Torque(BaseScheduler):
                 queue_name = setting_line[0].split(" ")[0]
                 queue = queue_dict[queue_name]
                 
-                setting = setting_line[0].split(" ")[1].strip()
+                setting_name = setting_line[0].split(" ")[1].strip()
                 value = "=".join(setting_line[1:]).strip()
                 
-                if setting in ["enabled", "started", "acl_group_enable", "acl_user_enable"]:
+                if setting_name in ["enabled", "started", "acl_group_enable", "acl_user_enable"]:
                     value = value.lower() == "true"
                 
-                if setting in ["acl_groups", "acl_groups +"]:
+                if setting_name in ["acl_groups", "acl_groups +"]:
                     acl[queue_name]["groups"] += value + ","                
-                elif setting in ["acl_users", "acl_users +"]:
+                elif setting_name in ["acl_users", "acl_users +"]:
                     acl[queue_name]["users"] += value + ","                
                 else:
-                    setting = Setting(name=setting, value=value)
+                    setting = Setting(name=setting_name, value=value)
                 
-                    if setting in ["queue_type", "max_queuable","max_running", "enabled", "started"]:
+                    if setting_name in ["queue_type", "max_queuable","max_running", "enabled", "started"]:
                         queue.settings_sections[0].settings.append(setting)                    
-                    elif setting in ["max_user_queuable", "max_user_run"]:
+                    elif setting_name in ["max_user_queuable", "max_user_run"]:
                         queue.settings_sections[1].settings.append(setting)                        
-                    elif setting in ["resources_max.mem", "resources_max.walltime", 
+                    elif setting_name in ["resources_max.mem", "resources_max.walltime", 
                         "resources_default.mem", "resources_default.walltime"]:
                         queue.settings_sections[2].settings.append(setting)                        
-                    elif setting == "resources_max.nodes":
+                    elif setting_name == "resources_max.nodes":
                         new_values = value.split(":")                        
                         if len(new_values) > 1:
                             setting.value = new_values[0]
@@ -226,7 +227,7 @@ class Torque(BaseScheduler):
                                 name="resources_max.ncpus", 
                                 value=1
                             ))                        
-                    elif setting == "resources_default.nodes":
+                    elif setting_name == "resources_default.nodes":
                         new_values = value.split(":ppn=")
                         if len(new_values) > 1:
                             setting.value = new_values[0]
@@ -241,7 +242,7 @@ class Torque(BaseScheduler):
                                 name="resources_default.ncpus", 
                                 value=1
                             ))                    
-                    elif setting in ["acl_group_enable", "acl_user_enable"]:
+                    elif setting_name in ["acl_group_enable", "acl_user_enable"]:
                         queue.settings_sections[3].settings.append(setting)
         
         queues = Data(data_sections, [])
@@ -249,10 +250,10 @@ class Torque(BaseScheduler):
             queue = queue_dict[queue_name]
             
             group_access = Setting(name="acl_groups", value=acl[queue_name]["groups"].strip(","))
-            queue.SettingsSections[3].Settings.append(group_access)
+            queue.settings_sections[3].settings.append(group_access)
             
             user_access = Setting(name="acl_users", value=acl[queue_name]["users"].strip(","))
-            queue.SettingsSections[3].Settings.append(user_access)
+            queue.settings_sections[3].settings.append(user_access)
             
             queues.data.append(queue)
             
@@ -409,17 +410,20 @@ class Torque(BaseScheduler):
         return nodes
 
     def add_node(self, node):
-        self.run_process('qmgr -c "create node %s"' % node.name)   
-        return self.update_node(node)
+        with SchedulerTransaction(self, self.impersonator.token):
+            self.run_process('qmgr -c "create node %s"' % node['name'])   
+            return self.update_node(node)
 
     def update_node(self, node):
-        self.run_process('qmgr -c "set node %s np = %s"' % (node.name, str(node.num_cores)))
-        self.run_process('qmgr -c "set node %s properties = %s"' % (node.name, node.other))
-        return self.get_nodes()
+        with SchedulerTransaction(self, self.impersonator.token):
+            self.run_process('qmgr -c "set node %s np = %s"' % (node['name'], str(node['num_cores'])))
+            self.run_process('qmgr -c "set node %s properties = %s"' % (node['name'], node['other']))
+            return self.get_nodes()
 
     def delete_node(self, id):
-        self.run_process('qmgr -c "delete node %s"' % id)
-        return self.get_nodes()
+        with SchedulerTransaction(self, self.impersonator.token):
+            self.run_process('qmgr -c "delete node %s"' % id)
+            return self.get_nodes()
 
     def stop(self):
         return self.run_process("qterm -t quick")    
@@ -473,7 +477,7 @@ class Torque(BaseScheduler):
             )
         ])
 
-    def create_job_script(self, job_name, job_dir, script_name, output_log, error_log, settings, has_dependencies, commands):
+    def create_job_script(self, job_name, job_dir, script_name, output_log, error_log, settings, hold, commands):
         script = os.path.join(job_dir, script_name)
         
         with open(script, 'w') as job_script:
@@ -502,7 +506,7 @@ class Torque(BaseScheduler):
                         print("#PBS -V", file=job_script)
             print(nodes, file=job_script)
             
-            if has_dependencies:
+            if hold:
                 print("#PBS -h", file=job_script)
             
             print("", file=job_script)
@@ -511,8 +515,7 @@ class Torque(BaseScheduler):
         return script
 
     def execute_job_script(self, path):
-        self.run_process("qsub %s" % path)
-        return self.get_job(id)
+        return self.run_process("qsub %s" % path)['out']
 
     def hold_job(self, id):
         self.run_process("qhold %s" % id)
@@ -524,7 +527,6 @@ class Torque(BaseScheduler):
 
     def kill_job(self, id):
         self.run_process("qdel %s" % id)
-        return self.get_job(id)
 
     def alter_job(self, Key, Value):
         '''
