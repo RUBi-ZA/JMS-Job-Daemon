@@ -76,7 +76,10 @@ def scheduler_server():
     token = request.args.get("token")
     scheduler = _get_scheduler(config, token)
         
-    server_config = scheduler.get_server_config()
+    if request.method == "GET":
+        server_config = scheduler.get_server_config()
+    elif request.method == "PATCH":
+        server_config = scheduler.update_server_config(json.loads(request.get_json()))
 
     return app.response_class(
         response=server_config.to_JSON(),
@@ -85,12 +88,17 @@ def scheduler_server():
     )
 
 
-@app.route("/scheduler/queues", methods=["GET"])
+@app.route("/scheduler/queues", methods=["GET", "POST", "PATCH"])
 def scheduler_queues():
     token = request.args.get("token")
-    scheduler = _get_scheduler(config, token)
-        
-    queues = scheduler.get_queues()
+    scheduler = _get_scheduler(config, token)  
+    
+    if request.method == "GET":
+        queues = scheduler.get_queues()
+    elif request.method == "POST":
+        queues = scheduler.add_queue(request.get_json()['name'])
+    elif request.method == "PATCH":
+        queues = scheduler.update_queue(request.get_json())
 
     return app.response_class(
         response=queues.to_JSON(),
@@ -99,12 +107,31 @@ def scheduler_queues():
     )
 
 
-@app.route("/scheduler/nodes", methods=["GET"])
-def scheduler_nodes():
+@app.route("/scheduler/queues/<queue_name>", methods=["DELETE"])
+def scheduler_queue(queue_name):
     token = request.args.get("token")
     scheduler = _get_scheduler(config, token)
         
-    nodes = scheduler.get_nodes()
+    queues = scheduler.delete_queue(queue_name)
+
+    return app.response_class(
+        response=queues.to_JSON(),
+        status=200,
+        mimetype="application/json"
+    )
+
+
+@app.route("/scheduler/nodes", methods=["GET", "POST", "PATCH"])
+def scheduler_nodes():
+    token = request.args.get("token")
+    scheduler = _get_scheduler(config, token)
+
+    if request.method == "GET":
+        nodes = scheduler.get_nodes()
+    elif request.method == "POST":
+        nodes = scheduler.add_node(request.get_json())
+    elif request.method == "PATCH":
+        nodes = scheduler.update_node(request.get_json())    
 
     return app.response_class(
         response=json.dumps(nodes, default=lambda o: o._try(o)),
@@ -113,21 +140,12 @@ def scheduler_nodes():
     )
 
 
-@app.route("/scheduler/nodes/<node_name>", methods=["POST", "PUT", "DELETE"])
+@app.route("/scheduler/nodes/<node_name>", methods=["DELETE"])
 def scheduler_node(node_name):
     token = request.args.get("token")
     scheduler = _get_scheduler(config, token)
     
-    if request.method == "DELETE":
-        nodes = scheduler.delete_node(node_name)
-    else:
-        node = request.get_json()
-        node['name'] = node_name
-        
-        if request.method == "POST":
-            nodes = scheduler.add_node(node)
-        else:
-            nodes = scheduler.update_node(node)
+    nodes = scheduler.delete_node(node_name)
 
     return app.response_class(
         response=json.dumps(nodes, default=lambda o: o._try(o)),

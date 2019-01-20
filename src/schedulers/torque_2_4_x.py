@@ -120,11 +120,10 @@ class Torque(BaseScheduler):
         
         return Data(data_sections, [settings_section])
 
-    def update_server_config(self, settings_sections):
-        for section in settings_sections:
-            for setting in section.settings:
-                self.run_process('qmgr -c "set server %s = %s"' % (setting.name, str(setting.value)))
-        return self.get_server_config()
+    def update_server_config(self, settings):
+        for setting in settings:
+            self.run_process('qmgr -c "set server %s = %s"' % (setting["name"], str(setting["value"])))
+            return self.get_server_config()
 
     def get_queues(self):
         output = self.run_process('qmgr -c "print server"')['out']
@@ -260,49 +259,52 @@ class Torque(BaseScheduler):
         return queues
 
     def add_queue(self, queue_name):
-        self.run_process('qmgr -c "create queue %s"' % queue_name)
-        return self.get_queues()
+        with SchedulerTransaction(self, self.impersonator.token):
+            self.run_process('qmgr -c "create queue %s"' % queue_name)
+            return self.get_queues()
 
     def update_queue(self, queue):
-        max_nodes = 1
-        max_procs = 1
-        def_nodes = 1
-        def_procs = 1
-        
-        for section in queue.settings_sections:
-            for setting in section.settings:
-                #set access controls - values come as csv
-                if setting.name in ["acl_groups", "acl_users"]:
-                    values = setting.value.split(",")
-                    if len(values) == 1 and values[0] == "":
-                        self.run_process('qmgr -c "set queue %s %s = temp"' % (queue.queue_name, setting.name))
-                        self.run_process('qmgr -c "set queue %s %s -= temp"' % (queue.queue_name, setting.name))
-                    else:
-                        for index, value in enumerate(values):
-                            value = value.strip()
-                            if index == 0:
-                                self.run_process('qmgr -c "set queue %s %s = %s"' % (queue.queue_name, setting.name, value))
-                            else:
-                                self.run_process('qmgr -c "set queue %s %s += %s"' % (queue.queue_name, setting.name, value))
-                elif setting.name == "resources_max.nodes":
-                    max_nodes = setting.value
-                elif setting.name == "resources_max.ncpus":
-                    max_procs = setting.value
-                elif setting.name == "resources_default.nodes":
-                    def_nodes = setting.value
-                elif setting.name == "resources_default.ncpus":
-                    def_procs = setting.value
-                
-                self.run_process('qmgr -c "set queue %s %s = %s"' % (queue.queue_name, setting.name, str(setting.value)))
-        
-        self.run_process('qmgr -c "set queue %s resources_max.nodes = %s:ppn=%s"' % (queue.queue_name, str(max_nodes), str(max_procs)))
-        self.run_process('qmgr -c "set queue %s resources_default.nodes = %s:ppn=%s"' % (queue.queue_name, def_nodes, def_procs))
-        
-        return self.get_queues()
+        with SchedulerTransaction(self, self.impersonator.token):
+            max_nodes = 1
+            max_procs = 1
+            def_nodes = 1
+            def_procs = 1
+            
+            for section in queue.settings_sections:
+                for setting in section.settings:
+                    #set access controls - values come as csv
+                    if setting.name in ["acl_groups", "acl_users"]:
+                        values = setting.value.split(",")
+                        if len(values) == 1 and values[0] == "":
+                            self.run_process('qmgr -c "set queue %s %s = temp"' % (queue.queue_name, setting.name))
+                            self.run_process('qmgr -c "set queue %s %s -= temp"' % (queue.queue_name, setting.name))
+                        else:
+                            for index, value in enumerate(values):
+                                value = value.strip()
+                                if index == 0:
+                                    self.run_process('qmgr -c "set queue %s %s = %s"' % (queue.queue_name, setting.name, value))
+                                else:
+                                    self.run_process('qmgr -c "set queue %s %s += %s"' % (queue.queue_name, setting.name, value))
+                    elif setting.name == "resources_max.nodes":
+                        max_nodes = setting.value
+                    elif setting.name == "resources_max.ncpus":
+                        max_procs = setting.value
+                    elif setting.name == "resources_default.nodes":
+                        def_nodes = setting.value
+                    elif setting.name == "resources_default.ncpus":
+                        def_procs = setting.value
+                    
+                    self.run_process('qmgr -c "set queue %s %s = %s"' % (queue.queue_name, setting.name, str(setting.value)))
+            
+            self.run_process('qmgr -c "set queue %s resources_max.nodes = %s:ppn=%s"' % (queue.queue_name, str(max_nodes), str(max_procs)))
+            self.run_process('qmgr -c "set queue %s resources_default.nodes = %s:ppn=%s"' % (queue.queue_name, def_nodes, def_procs))
+            
+            return self.get_queues()
 
     def delete_queue(self, queue_name):
-        self.run_process('qmgr -c "delete queue %s"' % queue_name)
-        return self.get_queues()
+        with SchedulerTransaction(self, self.impersonator.token):
+            self.run_process('qmgr -c "delete queue %s"' % queue_name)
+            return self.get_queues()
 
     def get_administrators(self):
         output = self.run_process('qmgr -c "print server"')['out']
@@ -416,8 +418,10 @@ class Torque(BaseScheduler):
 
     def update_node(self, node):
         with SchedulerTransaction(self, self.impersonator.token):
-            self.run_process('qmgr -c "set node %s np = %s"' % (node['name'], str(node['num_cores'])))
-            self.run_process('qmgr -c "set node %s properties = %s"' % (node['name'], node['other']))
+            if node.get('num_cores'):
+                self.run_process('qmgr -c "set node %s np = %s"' % (node['name'], str(node['num_cores'])))
+            if node.get('other'):
+                self.run_process('qmgr -c "set node %s properties = %s"' % (node['name'], node['other']))
             return self.get_nodes()
 
     def delete_node(self, id):
